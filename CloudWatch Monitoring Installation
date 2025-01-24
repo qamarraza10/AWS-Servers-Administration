@@ -1,0 +1,101 @@
+Create an Instance of your running server from production to the test region::
+
+To enable CloudWatch monitoring we need the prerequisites which is: IAM Roles Policy.
+>> Search IAM and open this> go to roles >create role> AWS Service> Service or use case: EC2 > Permission Policy: i. AmazonEC2RoleforSSM, ii. CloudWatchAgentServerPolicy > Role Name: name of policy you want to keep.
+>> After the policy is created assign the policy to instance you want to enable the CloudWatch Monitoring for this:
+-- Select instance>actions>security>modify IAM role.
+
+After the role is assigned SSH the AWS server and run the following commands: 
+sudo dnf update -y
+sudo dnf install curl unzip -y
+
+curl -O https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm (edited) 
+
+sudo dnf localinstall ./amazon-cloudwatch-agent.rpm -y
+
+sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+
+sudo nano /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "cwagent"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/messages",
+            "log_group_name": "system-logs",
+            "log_stream_name": "{instance_id}-messages"
+          },
+          {
+            "file_path": "/var/log/custom_app.log",
+            "log_group_name": "application-logs",
+            "log_stream_name": "{instance_id}-app"
+          }
+        ]
+      }
+    }
+  },
+  "metrics": {
+    "append_dimensions": {
+      "InstanceId": "${aws:InstanceId}",
+      "InstanceType": "${aws:InstanceType}"
+    },
+    "metrics_collected": {
+      "cpu": {
+        "measurement": [
+          "cpu_usage_idle",
+          "cpu_usage_user",
+          "cpu_usage_system",
+          "cpu_usage_iowait"
+        ],
+        "metrics_collection_interval": 60,
+        "totalcpu": true
+      },
+      "mem": {
+        "measurement": [
+          "mem_total",
+          "mem_free",
+          "mem_used_percent"
+        ],
+        "metrics_collection_interval": 60
+      },
+      "disk": {
+        "measurement": [
+          "used_percent",
+          "total",
+          "free",
+          "available"
+        ],
+        "resources": [
+          "/"
+        ],
+        "metrics_collection_interval": 60
+      },
+      "diskio": {
+        "measurement": [
+          "read_bytes",
+          "write_bytes"
+        ],
+        "resources": [
+          "*"
+        ],
+        "metrics_collection_interval": 60
+      }
+    }
+  }
+}
+
+sudo chmod 644 /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+sudo chown root:cwagent /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+sudo systemctl restart amazon-cloudwatch-agent
+
+sudo systemctl status amazon-cloudwatch-agent
+
+
