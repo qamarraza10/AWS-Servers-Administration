@@ -1,0 +1,35 @@
+:: To check CPU Usuage and running processes ::
+
+To check CPU usage: 
+top
+Press 1 to check the per core usage at top
+
+To install package: 
+sudo dnf install htop -y
+
+To list all the process: 
+htop
+
+For 1 process: 
+top -p (process-id)
+
+For a specific process with more details:
+ps -p (process-id) -o pid,ppid,user,%cpu,%mem,cmd
+
+To install package:
+sudo dnf install strace -y
+
+Trace What a Process is Doing:
+strace -p 3140184
+
+To list total number of CPU's:
+nproc
+
+To list all the CPU's:
+lscpu
+
+To install systage package: 
+sudo dnf install -y sysstat
+
+Per Core CPU usage:
+mpstat -P ALL 1
