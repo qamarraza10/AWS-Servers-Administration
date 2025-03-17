@@ -1,1 +1,51 @@
+# New Relic Infrastructure Agent Management Commands
 
+## Check Installed New Relic Packages
+# This command lists all installed packages and filters results for 'newrelic'.
+rpm -qa | grep newrelic
+
+## Check if New Relic Process is Running
+# This command lists running processes and filters for 'newrelic'.
+ps aux | grep newrelic
+
+## Check Installed New Relic Infrastructure Package
+# This command lists installed packages and filters specifically for 'newrelic-infra'.
+rpm -qa | grep newrelic-infra
+
+## Stop New Relic Infrastructure Service
+# This command stops the New Relic Infrastructure service.
+sudo systemctl stop newrelic-infra
+
+## Start New Relic Infrastructure Service
+# This command starts the New Relic Infrastructure service.
+sudo systemctl start newrelic-infra
+
+## Check Status of New Relic Infrastructure Service
+# This command checks the current status of the New Relic Infrastructure service.
+sudo systemctl status newrelic-infra
+
+## Uninstall New Relic Infrastructure Agent
+# This command removes the New Relic Infrastructure package.
+dnf remove newrelic-infra -y
+
+## Remove New Relic Repository File
+# This command deletes the repository configuration file for New Relic.
+rm -f /etc/yum.repos.d/newrelic-infra.repo
+
+# This command forcefully removes the New Relic repository directory (if present).
+rm -rf /etc/yum.repos.d/newrelic-infra.repo
+
+## Navigate to Configuration Directory
+# This command changes the current directory to /etc.
+cd /etc
+
+## View New Relic Configuration File
+# This command displays the contents of the New Relic configuration file, which contains the license key.
+cat newrelic-infra.yml
+
+## Remove New Relic Files and Configuration
+# This command removes the New Relic Infrastructure directory.
+rm -rf newrelic-infra
+
+# This command removes the New Relic configuration file.
+rm -r newrelic-infra.yml
