@@ -1,0 +1,25 @@
+# Granting Access to a Directory as Root
+
+## List all users with a UID greater than or equal to 1000
+# This command lists all users who have a user ID (UID) of 1000 or higher, which typically indicates regular (non-system) users.
+awk -F: '$3 >= 1000 { print $1 }' /etc/passwd
+
+## Check directory ownership and permissions
+# This command displays the ownership and permission details of the specified directory.
+ls -ld /var/www/html/nexus
+
+## Check if a specific user is part of any groups
+# This command shows the groups that a specific user belongs to.
+groups username
+
+## View all groups available on the server
+# This command lists all the groups configured on the server.
+cat /etc/group
+
+## Change ownership of a directory to a specific user
+# This command assigns ownership of the 'nexus' directory to the specified user.
+sudo chown username:username nexus
+
+## Add a user to a group to grant permissions
+# This command adds the specified user to a group, allowing them to access files and directories associated with that group.
+sudo usermod -aG groupname username
