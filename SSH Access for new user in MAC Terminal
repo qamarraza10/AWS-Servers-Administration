@@ -1,0 +1,77 @@
+# Creating a New User in Server and SSH Access from Mac Terminal
+
+## List All Regular Users
+# This command lists all users with a UID of 1000 or higher, which indicates regular (non-system) users.
+awk -F: '$3 >= 1000 { print $1 }' /etc/passwd
+
+## Server Side: Adding a New User
+
+### Create a New User
+# This command creates a new user on the server.
+sudo adduser username
+
+### Grant Administrative Privileges
+# This command adds the user to the 'wheel' group, granting administrative privileges.
+sudo usermod -aG wheel username
+
+### Switch to the New User
+su - username
+
+### List Hidden Files in the Home Directory
+ls -a ~
+
+### Create an SSH Directory
+# This command creates the .ssh directory if it doesn’t already exist.
+mkdir -p ~/.ssh
+
+### Set Correct Permissions for the SSH Directory
+chmod 700 ~/.ssh
+
+### Edit the Authorized Keys File
+# This command opens the authorized_keys file for editing to add the public SSH key.
+nano ~/.ssh/authorized_keys
+
+### View the Contents of the Authorized Keys File
+cat ~/.ssh/authorized_keys
+
+### Set the Correct Permissions for the SSH Key File and Directory
+chmod 600 ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
+
+## User Side: Generating an SSH Key Pair
+
+### Generate an SSH Key Pair
+# This command generates a new RSA SSH key pair.
+ssh-keygen -t rsa
+
+### Default Path for the Public Key
+# The default path where the generated public key is stored.
+/Users/your_username/.ssh/id_rsa.pub
+
+### Copy and Share the Public Key
+# This command displays the public key so it can be added to the server.
+cat ~/.ssh/id_rsa.pub
+
+### Connect to the Server via SSH
+# This command initiates an SSH connection to the server.
+ssh username@public_ip_of_server
+
+## Optional: Disable Password Authentication for Additional Security
+
+### Edit the SSH Configuration File
+# This command opens the SSH configuration file for editing.
+sudo nano /etc/ssh/sshd_config
+
+### Update the Following Parameters in the File:
+# - Disable password authentication
+# - Prevent root login
+# - Enable public key authentication
+PasswordAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+
+### Restart the SSH Service
+# This command restarts the SSH service to apply the changes.
+sudo systemctl restart sshd
+
+# Now, only users with valid SSH keys can log in, providing extra security for your server.
