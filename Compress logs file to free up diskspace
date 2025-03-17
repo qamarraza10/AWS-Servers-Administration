@@ -1,0 +1,54 @@
+## For Server-1 (BF-FE)
+
+### Navigate to the Nginx log directory
+cd /var/log/nginx
+
+### List all files with detailed information
+ls -alFh
+
+### Check available disk space
+df -h
+
+### Navigate to the /var directory
+cd /var/
+
+### Show disk usage of all subdirectories
+du -sh *
+
+### Navigate to the log directory
+cd log
+
+### List all files
+ls 
+
+### Show disk usage of all files and directories
+du -sh *
+
+### Navigate to the Nginx log directory
+cd nginx/
+
+### Show disk usage of all files in the Nginx log directory
+du -sh * 
+
+### List all files with detailed information
+ls -alFh
+
+### Rotate the production access log by renaming it and restarting Nginx
+service nginx stop && mv production.access.log production.access.log.17032025 && service nginx start
+
+### Compress the rotated log file
+xz production.access.log.17032025
+
+### View the content of the rotated log file
+less production.access.log.17032025
+
+### Check archived log files
+ls -lh production.access.log.*.xz
+
+## For Server-2 (BF-DB-API)
+
+### Rotate the access log by renaming it and restarting Nginx
+service nginx stop && mv access.log access.log.12032025 && service nginx start
+
+### Compress the rotated log file
+xz access.log.12032025
