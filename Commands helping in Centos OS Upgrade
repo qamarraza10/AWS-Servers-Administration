@@ -1,0 +1,97 @@
+# General Commands for Upgrading CentOS Linux Server
+
+## Listing Files and Managing Permissions
+
+### List all files in the current directory
+ls
+
+### List all files with detailed information, including permissions
+ls -alFh
+
+### Change permissions for all shell scripts to be executable
+chmod 700 *.sh
+
+### Verify updated permissions
+ls -alFh
+
+---
+
+## SSH Key Management
+
+### View SSH configuration directory
+cat .ssh
+
+### Change to SSH directory
+cd .ssh
+
+### Generate a new ECDSA SSH key
+ssh-keygen -t ecdsa
+
+### List files in the SSH directory
+ls
+
+### View a specific SSH key file (partial command, needs completion)
+cat id_
+
+---
+
+## Git Operations in VS Code Terminal
+
+### Push a branch to the remote repository
+git push origin branchname
+
+---
+
+## Git Operations on the Server
+
+### Edit known hosts file to remove problematic keys
+nano .ssh/known_hosts
+
+### Clone a specific branch from GitHub repository
+git clone --branch [branch-name] git@github.com:Final-Enterprises/CentoUpgrade.git
+
+### Clone the DB-API branch
+git clone --branch DB-API git@github.com:Final-Enterprises/CentoUpgrade.git
+
+### Alternative method to clone repository (fetches all branches)
+git clone git@github.com:Final-Enterprises/CentoUpgrade.git
+
+### List all local branches
+git branch
+
+### Switch to a specific branch
+git checkout branchname
+
+### Clone a different branch (e.g., blog branch)
+git clone --branch blog git@github.com:Final-Enterprises/CentoUpgrade.git
+
+### Edit known hosts to remove old GitHub key
+nano .ssh/known_hosts
+
+### View updated known hosts file
+cat .ssh/known_hosts
+
+### Retry cloning the repository after removing old key
+git clone git@github.com:Final-Enterprises/CentoUpgrade.git
+
+---
+
+## Running Upgrade Scripts
+
+### Execute pre-upgrade script and log output
+{ time ./1-pre_upgrade.sh; } |& tee phase1.log
+
+### Reboot the system
+shutdown -r now
+
+### Execute upgrade script and log output
+{ time ./2-upgrade.sh; } |& tee phase2.log
+
+### Reboot the system
+shutdown -r now
+
+### Execute post-upgrade script and log output
+{ time ./3-post_upgrade.sh; } |& tee phase3.log
+
+### Reboot the system
+shutdown -r now
