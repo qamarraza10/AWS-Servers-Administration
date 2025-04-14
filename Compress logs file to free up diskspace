@@ -52,3 +52,33 @@ service nginx stop && mv access.log access.log.12032025 && service nginx start
 
 ### Compress the rotated log file
 xz access.log.12032025
+
+
+Additional commands::
+
+To find a directory:
+sudo find / -type d -name "name of directory"
+
+To find a file that have a size more than 30MB:
+find . -type f -size +30M
+
+
+To preview files that will be deleted forcefully within that directory: 
+echo rm -rf *
+
+
+To remove all files forcefully within that directory: 
+rm -rf *
+
+
+To remove multiple files with permission by pressing y:
+rm error.log.2025_03_28.{100..120} 
+
+To remove multiple files without permission:
+rm error.log.2025_03_28.{100..120} -f
+
+To remove all the files for a specific month without permission: 
+rm -f error.log.2025_03_* -f
+
+
+
