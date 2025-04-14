@@ -63,6 +63,10 @@ To find a file that have a size more than 30MB:
 find . -type f -size +30M
 
 
+To find a file that have a size more than 30MB and also will show the size of each file:
+find . -type f -size +30M -exec du -h {} \;
+
+
 To preview files that will be deleted forcefully within that directory: 
 echo rm -rf *
 
