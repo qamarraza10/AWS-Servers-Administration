@@ -1,0 +1,34 @@
+df -h
+What it does: Displays disk usage for all mounted filesystems in a human-readable format (e.g., GB/MB).
+Why it's used: To quickly identify which partitions are full or have free space.
+
+du -sh *
+What it does: Shows the size of each file and directory in the current location, summarized in a readable format.
+Why it's used: To find which items are consuming the most space in the current directory.
+
+du -h --max-depth=1 /
+What it does: Displays disk usage for each top-level directory under / with human-readable sizes.
+Why it's used: To identify which major system directories are using the most space.
+
+lsblk
+What it does: Lists all block devices (disks and partitions) and their layout.
+Why it's used: To view disk structure and confirm device/partition names before modifying them.
+
+growpart /dev/nvme0n1 2
+What it does: Expands partition 2 on disk /dev/nvme0n1 to use all available unallocated space.
+Why it's used: When disk size is increased (e.g., cloud/VM), this adjusts the partition to match.
+
+xfs_growfs -d /
+What it does: Grows the XFS filesystem mounted at / to occupy the newly available space in the partition.
+Why it's used: Needed after resizing the partition to allow the OS to actually use the extra space.
+
+mount
+What it does: Lists all currently mounted filesystems and their mount points.
+Why it's used: To verify if and where filesystems are mounted, and check their types.
+
+
+Notes::
+- Always confirm your working directory with `pwd` before using deletion commands like `rm -rf *`.
+- Double-check disk and partition names with `lsblk` before applying changes.
+- `xfs_growfs` is specific to XFS; for `ext4` filesystems, use `resize2fs` instead.
+- Be cautious — most of these commands affect system storage directly and should be executed with proper backups or snapshots in place.
