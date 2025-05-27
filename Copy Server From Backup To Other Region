@@ -1,0 +1,6 @@
+if we have setup the AWS Backup for company, we can resotre the instance from AWS Backup "
+
+-- Search and open AWS Backup > go to vaults > vaults name > select server and click copy > choose region where you want to copy and select default IAM Rule.
+-- and click on copy, you can check status in the jobs button, after copy go to the other region where you copy it e.g London.
+-- In other region search and open AWS Backup > go to vaults > vaults name and select the server you want to restore>choose you prefered security group >Instance IAM Role: restore with origional IAM role > Restore Role: AWS Restore> given at end click on restore backup and it will generate the EC2 instance automatically. 
+Alternatively:: when resotre the backup it will generate AMI in EC2 button and you can laucnh the instance from there as well.
