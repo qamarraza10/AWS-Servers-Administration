@@ -1,0 +1,29 @@
+# Check which groups the user 'myuser' belongs to
+groups myuser
+
+# Switch to user 'myuser' with a login shell (using sudo)
+sudo su - myuser
+
+# Add user 'myuser' to the 'nginx' group without removing other groups
+sudo usermod -aG nginx myuser
+
+# Change directory to /var/www/html/application
+cd /var/www/html/application
+
+# List all files and directories with details, show human-readable sizes, and classify entries
+ls -alFh
+
+# Change ownership of /var/www/html/application and all its contents to user 'myuser' and group 'nginx'
+chown -R myuser:nginx /var/www/html/application
+
+# Set permissions so owner and group can read/write/execute, others have no permissions (recursive)
+chmod -R 770 /var/www/html/application
+
+# Verify ownership and permissions of the directory itself
+ls -ld /var/www/html/application
+
+# List details of files and directories inside /var/www/html/application
+ls -l /var/www/html/application
+
+# Optional: Allow owner and group full access, others read and execute permissions (recursive)
+chmod -R 775 /var/www/html/application
