@@ -1,0 +1,53 @@
+Script sample on Server for Auto-Deploy::
+
+#!/bin/sh -e
+pCOUNT=`pgrep -c -f $0`
+while [ ${pCOUNT} -gt 1 ]; do
+        sleep 1
+        pCOUNT=`pgrep -c -f $0`
+        echo "Sleeping ... ${pCOUNT}"
+done
+## Verify
+SITE=$1
+[ "x${SITE}" == "x" ] && exit 1
+RELEASE=$2
+[ "x${RELEASE}" == "x" ] && exit 1
+BRANCH=$3
+[ "x${BRANCH}" == "x" ] && exit 1
+echo  "`date --rfc-3339=seconds`  site:${SITE} release:${RELEASE} branch:${BRANCH}" >> ~/Deploy.log
+[ -d /var/www/html ] || exit 1
+[ -d /var/www/html/${SITE} ] || mkdir /var/www/html/${SITE}
+if [ -d /var/www/html/${SITE}/${RELEASE} ]; then
+  if [ -d /var/www/html/${SITE}/${RELEASE}/.git ]; then
+    cd /var/www/html/${SITE}/${RELEASE}
+    git pull origin ${BRANCH}
+  else
+    cDATE=`date +%s`
+    NOW="`date +%F`"
+    git clone git@github.com:my-enterprise/Mytool.git ~/mytool-${cDATE}
+    cd ~/mytool-${cDATE}
+    git checkout -b ${SITE}.${RELEASE}.${NOW}
+    mv ~/mytool-${cDATE}/{.git,.github} /var/www/html/${SITE}/${RELEASE}/
+    rm -rf ~/mytool-${cDATE}
+    cd /var/www/html/${SITE}/${RELEASE}
+    git add -A .
+    ( git commit -a -m "Server push ${SITE}.${RELEASE}.${NOW}" && git push -u origin ${SITE}.${RELEASE}.${NOW} ) || /bin/true
+  fi
+else
+  git clone git@github.com:my-enterprise/mytoolrepo.git /var/www/html/${SITE}/${RELEASE}
+fi
+cd /var/www/html/${SITE}/${RELEASE}
+#composer install
+TMPfile=`mktemp`
+#find . -name documents -prune -o -type f -print0 | xargs -0 dos2unix -ic >> ${TMPfile}
+find . \( -path "./documents" -o -path "./cache" \) -prune -o -type f -print0 | xargs -0 dos2unix -ic >> ${TMPfile}
+sed -i 's% %\\ %g' ${TMPfile}
+while read FILE; do
+    DIRname=`dirname "${FILE}"`
+    FILEname=`basename "${FILE}"`
+    pushd ${DIRname}
+    dos2unix -k ${FILEname}
+    popd
+done < ${TMPfile}
+rm -f ${TMPfile}
+sudo /usr/sbin/service php-fpm restart
