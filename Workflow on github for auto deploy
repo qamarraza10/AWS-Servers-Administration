@@ -1,0 +1,13 @@
+name: my-deploy-to-production
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: JimCronqvist/action-ssh@master
+      with:
+        hosts: '${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}'
+        privateKey: ${{ secrets.SERVER_SSH_KEY }}
+        debug: false
+        command: /root/bin/deploy_site my production ${GITHUB_REF##*/}
