@@ -2,9 +2,13 @@
 
 ## Finding the Path of a File or Directory
 
+
 ### For a File:
 # This command shows the path of an executable file if it's in the system's PATH.
 which filename
+
+# Displays how 'filename' would be interpreted by the shell (path, alias, function, etc.)
+command -v filename 
 
 # This command searches the entire filesystem for a file with the specified name.
 sudo find / -name "name of file"
