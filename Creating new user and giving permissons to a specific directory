@@ -1,0 +1,245 @@
+# Manual Setup Process
+
+## Objective:
+
+The goal is to create a user, grant access to specific directories, and restrict access to others on a CentOS server.
+
+---
+
+## Step 1: Create a New User
+
+### 1.1 Create the User:
+
+You need to create a user (`raza` or your desired username).
+
+```bash
+sudo useradd -m raza
+```
+
+### 1.2 Set Password for the User:
+
+Set a password for the newly created user.
+
+```bash
+sudo passwd raza
+```
+
+---
+
+## Step 2: Create a New Group (If Needed)
+
+### 2.1 Create the Group:
+
+Create a group (`staging-group`) if you don’t have one already.
+
+```bash
+sudo groupadd staging-group
+```
+
+### 2.2 Add the User to the Group:
+
+Add the user `raza` to the group `staging-group` so they can access directories that belong to this group.
+
+```bash
+sudo usermod -aG staging-group raza
+```
+
+### 2.3 Log Out and Log In Again:
+
+`raza` (or any user) should log out and log back in for the group changes to take effect:
+
+```bash
+exit
+su - raza
+```
+
+---
+
+## Step 3: Set Permissions on the Main Directory
+
+### 3.1 Set Permissions on `main_directory_name`:
+
+Modify the `main_directory_name` to ensure that everyone can enter it, but only the owner can modify it.
+
+```bash
+sudo chmod 755 /home/main_directory_name
+```
+
+### 3.2 Check Permissions:
+
+Verify the permissions of the main directory.
+
+```bash
+ls -ld /home/main_directory_name
+```
+
+---
+
+## Step 4: Set Permissions for the `staging` Directory
+
+### 4.1 Set Group Ownership for the `staging` Directory:
+
+Change the group ownership of the `staging` directory to `staging-group`.
+
+```bash
+sudo chown -R :staging-group /home/main_directory_name/api/staging
+```
+
+### 4.2 Set Permissions on `staging` Directory:
+
+Set the permissions to allow the owner (`main_directory_name`) and the group (`staging-group`) to read, write, and execute. Others have no access.
+
+```bash
+sudo chmod -R 770 /home/main_directory_name/api/staging
+```
+
+### 4.3 Verify Permissions:
+
+Check the permissions of the `staging` directory.
+
+```bash
+ls -ld /home/main_directory_name/api/staging
+```
+
+---
+
+## Step 5: Restrict Access to the `production` Directory
+
+### 5.1 Set Permissions on `production` Directory:
+
+Modify the `production` directory to restrict access to the owner (`main_directory_name`) only, while others (including the `staging-group`) cannot access it.
+
+```bash
+sudo chmod -R 750 /home/main_directory_name/api/production
+```
+
+### 5.2 Verify Permissions:
+
+Check the permissions of the `production` directory.
+
+```bash
+ls -ld /home/main_directory_name/api/production
+```
+
+---
+
+## Step 6: Verify User Access
+
+### 6.1 Test Access to `staging` Directory:
+
+After following the above steps, verify that the user `raza` can access the `staging` directory.
+
+```bash
+su - raza
+cd /home/main_directory_name/api/staging
+ls
+```
+
+### 6.2 Test Access to `production` Directory:
+
+Verify that the user `raza` cannot access the `production` directory.
+
+```bash
+cd /home/main_directory_name/api/production
+```
+
+---
+
+### Final Notes:
+
+* Replace `main_directory_name` with the actual directory name in your system.
+* Make sure the user `raza` logs out and logs back in after changes to group memberships.
+* You can follow the same steps for other users as needed.
+
+==========================================================================================
+
+
+                                     "Script:" 
+
+#!/bin/bash
+
+# Variables
+USERNAME="raza"
+GROUPNAME="staging-group"
+MAIN_DIR="/home/main_directory_name"
+API_PATH="$MAIN_DIR/api"
+STAGING_PATH="$API_PATH/staging"
+PRODUCTION_PATH="$API_PATH/production"
+
+# Create user if not exists
+if ! id -u $USERNAME &>/dev/null; then
+  echo "Creating user $USERNAME..."
+  useradd -m $USERNAME
+  echo "User $USERNAME created."
+else
+  echo "User $USERNAME already exists."
+fi
+
+# Create group if not exists
+if ! getent group $GROUPNAME &>/dev/null; then
+  echo "Creating group $GROUPNAME..."
+  groupadd $GROUPNAME
+  echo "Group $GROUPNAME created."
+else
+  echo "Group $GROUPNAME already exists."
+fi
+
+# Add user to group
+echo "Adding $USERNAME to $GROUPNAME..."
+usermod -aG $GROUPNAME $USERNAME
+
+# Set permissions on /home/main_directory_name
+echo "Setting permissions 755 on $MAIN_DIR ..."
+chmod 755 $MAIN_DIR
+
+# Change group ownership of staging directory and set permissions
+echo "Changing group ownership and permissions for $STAGING_PATH ..."
+chown -R :$GROUPNAME $STAGING_PATH
+chmod -R 770 $STAGING_PATH
+
+# Restrict access to production directory
+echo "Setting restrictive permissions 750 on $PRODUCTION_PATH ..."
+chmod -R 750 $PRODUCTION_PATH
+
+# Final status
+echo "Permissions and ownerships set successfully."
+echo ""
+echo "Summary:"
+ls -ld $MAIN_DIR
+ls -ld $STAGING_PATH
+ls -ld $PRODUCTION_PATH
+echo ""
+echo "Make sure to set the password for $USERNAME using: passwd $USERNAME"
+echo "User $USERNAME must logout/login for group membership changes to apply."
+
+============================================================================
+
+How to Use the Script:
+Create the Script File:
+
+nano setup_raza_access.sh
+Paste the Script into the file (ctrl+shift+v)
+
+Save and Exit (ctrl+x):
+
+In nano, press Ctrl + O to save, press Enter, and then Ctrl + X to exit.
+
+Make the Script Executable:
+
+bash
+Copy
+chmod +x setup_raza_access.sh
+Run the Script:
+
+bash
+Copy
+sudo ./setup_raza_access.sh
+Set the Password for raza (if needed):
+
+bash
+Copy
+sudo passwd raza
+Ask raza to Log Out and Log In Again to apply group membership changes.
+
+
+
