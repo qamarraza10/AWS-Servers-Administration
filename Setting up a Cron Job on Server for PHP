@@ -130,13 +130,6 @@ sudo systemctl enable crond
 
 ---
 
-## 🧠 Reference
-
-* [Crontab Guru](https://crontab.guru/) – Quick reference for cron syntax
-* `man crontab`, `man 5 crontab` – Manual pages for deeper understanding
-
----
-
 ### 🔖 Example Use Case
 
 Running a background job every minute to sync user data or queue tasks:
