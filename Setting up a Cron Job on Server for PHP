@@ -1,0 +1,146 @@
+```markdown
+# 📅 Cron Job Setup Guide for PHP Scripts on CentOS
+
+This document provides a quick reference for setting up a cron job to run a PHP script **every minute** on a **CentOS Linux server**. It's designed for reusability across different servers and environments.
+
+---
+
+## 🔧 Prerequisites
+
+- Access to a CentOS Linux server.
+- Logged in as a user with **superuser privileges**.
+- PHP installed on the system (accessible via `/usr/bin/php`).
+- PHP script placed inside a directory structure like:
+
+```
+
+/var/www/html/general_directory_name/production_directory/cron.php
+
+````
+
+---
+
+                                                                          ## 🛠️ Step-by-Step Instructions
+
+### 1. Open the Crontab Editor
+
+```SSH into the server
+crontab -e
+````
+
+This opens the crontab editor for the current user.
+
+---
+
+### 2. Add the Cron Job
+
+Insert the following line at the bottom of the crontab file:
+
+```bash
+*/1 * * * * /usr/bin/php /var/www/html/general_directory_name/production_directory/cron.php -r >/dev/null 2>&1
+```
+
+#### Explanation:
+
+* `*/1 * * * *`: Runs the command **every minute**.
+* `/usr/bin/php`: Full path to the PHP binary (use `which php` to confirm).
+* `/var/www/html/general_directory_name/production_directory/cron.php`: Path to the PHP script.
+* `-r`: Argument passed to the script (adjust as required).
+* `>/dev/null 2>&1`: Silences output and errors (optional, but recommended in production).
+
+---
+
+### 3. Save and Exit
+
+* If you're using `vi` or `vim`: press `Esc`, type `:wq`, then hit `Enter`.
+* If using `nano`: press `Ctrl+O` to save and `Ctrl+X` to exit.
+
+---
+
+### 4. Verify the Cron Job
+
+Check that your cron job was saved successfully:
+
+```bash
+crontab -l
+```
+
+Example output:
+
+```bash
+*/1 * * * * /usr/bin/php /var/www/html/general_directory_name/production_directory/cron.php -r >/dev/null 2>&1
+```
+
+---
+
+## ✅ Additional Tips
+
+### 🔍 Find the Full Path to PHP
+
+```bash
+which php
+```
+
+Use the result in your cron job to avoid PATH issues.
+
+---
+
+### 📝 Log Output (Optional)
+
+To log the output to a file for debugging, replace `>/dev/null 2>&1` with:
+
+```bash
+>> /var/log/cronphp.log 2>&1
+```
+
+---
+
+### 🔄 Ensure Cron Daemon is Running
+
+```bash
+sudo systemctl status crond
+```
+
+Start/restart if needed:
+
+```bash
+sudo systemctl start crond
+sudo systemctl enable crond
+```
+
+---
+
+## 📂 Directory Structure Convention
+
+* `general_directory_name`: Root application directory (e.g., `nexus`, `portal`, etc.).
+* `production_directory`: Environment-specific subdirectory (e.g., `production`, `staging`, etc.).
+* `cron.php`: Your actual cron-executed PHP script.
+
+---
+
+## 📌 Notes
+
+* Always test your cron job manually before relying on cron:
+
+  ```bash
+  /usr/bin/php /var/www/html/general_directory_name/production_directory/cron.php -r
+  ```
+
+* Ensure permissions allow the cron user to access and execute the script.
+
+---
+
+## 🧠 Reference
+
+* [Crontab Guru](https://crontab.guru/) – Quick reference for cron syntax
+* `man crontab`, `man 5 crontab` – Manual pages for deeper understanding
+
+---
+
+### 🔖 Example Use Case
+
+Running a background job every minute to sync user data or queue tasks:
+
+```bash
+*/1 * * * * /usr/bin/php /var/www/html/portal/production/cron.php -r >> /var/log/user_sync.log 2>&1
+```
