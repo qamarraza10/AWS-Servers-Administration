@@ -1,0 +1,292 @@
+# AWS EC2 Server Setup & Configuration Guide
+
+This guide documents the complete step-by-step process to:
+
+* Create a new VPC
+* Launch an EC2 instance
+* Access the instance using SSH with PuTTY and SecureCRT
+* Change the server hostname
+* Enable root SSH login via key and password
+* Point your domain to the server
+* Purchase and configure SSL certificates (using Internet.bs with DNS validation)
+* Configure Nginx with SSL
+
+---
+
+## Prerequisites
+
+* AWS account with appropriate permissions
+* Domain registered (e.g., via Internet.bs)
+* Local machine with SSH client (PuTTY, SecureCRT, or Linux/macOS terminal)
+* Private key file (.pem/.ppk) for EC2 SSH access
+
+---
+
+
+
+
+
+                                                                ## 1. Create a New VPC
+
+### 1.1 Create the VPC
+
+* Go to AWS Console → **VPC Dashboard** → **Your VPCs** → **Create VPC**
+* Choose **VPC only**
+* Set:
+
+  * Name: `VendorProxyVPC`
+  * IPv4 CIDR block: `10.0.0.0/16`
+  * IPv6 CIDR block: None
+  * Tenancy: Default
+* Click **Create VPC**
+
+### 1.2 Create Subnet
+
+* Go to **Subnets** → **Create subnet**
+* Name: `VendorProxySubnet`
+* VPC: `VendorProxyVPC`
+* IPv4 CIDR block: `10.0.0.0/20`
+* Select preferred Availability Zone
+* Click **Create subnet**
+
+### 1.3 Create & Attach Internet Gateway
+
+* Go to **Internet Gateways** → **Create internet gateway**
+* Name: `VendorProxyIGW`
+* Attach to `VendorProxyVPC`
+
+### 1.4 Create Route Table and Add Route
+
+* Go to **Route Tables** → **Create route table**
+* Name: `VendorProxyVPC-RT`
+* Attach to `VendorProxyVPC`
+* Edit routes → Add route
+
+  * Destination: `0.0.0.0/0`
+  * Target: `VendorProxyIGW`
+* Save
+
+### 1.5 Associate Subnet to Route Table
+
+* In route table → Subnet Associations → Edit subnet associations
+* Select `VendorProxySubnet`
+* Save
+
+---
+
+                                                                    ## 2. Launch EC2 Instance
+
+* Go to **EC2** → **Launch Instances**
+* Select Amazon Linux 2 AMI
+* Choose instance type (e.g., t4g.micro)
+* Configure instance details:
+
+  * Network: `VendorProxyVPC`
+  * Subnet: `VendorProxySubnet`
+  * Auto-assign Public IP: Enable
+* Add Storage (default or per needs)
+* Add Tags (e.g., Name=`vendorproxyserver`)
+* Configure Security Group:
+
+  * Allow SSH (TCP 22) from your IP & vendor IPs only
+  * Allow HTTP (80) and HTTPS (443) from anywhere (or restrict as needed)
+* Choose or create Key Pair
+* Launch instance
+
+---
+
+                                                      ## 3. Access EC2 Instance via SSH with PuTTY and SecureCRT
+
+### 3.1 Convert `.pem` to `.ppk` (for PuTTY/SecureCRT)
+
+* Open **PuTTYgen**
+* Load `.pem` private key
+* Save private key as `.ppk`
+
+### 3.2 Configure PuTTY/SecureCRT
+
+* Hostname: Public IP of EC2 instance
+* Port: 22
+* User: `ec2-user` (default) or `root` if enabled
+* Authentication: Load `.ppk` file
+* Connect
+
+---
+
+                                                                      ## 4. Change Hostname
+
+* SSH into server
+* Run:
+
+```bash
+sudo hostnamectl set-hostname vendorproxyserver
+sudo nano /etc/hosts
+```
+
+* Edit `/etc/hosts` to include:
+
+```
+127.0.0.1   localhost vendorproxyserver localhost.localdomain localhost4 localhost4.localdomain4
+```
+
+* Save and exit
+* Reconnect SSH session for prompt change
+
+---
+
+                                                                        ## 5. Enable Direct Root SSH Login with Key
+
+* Copy authorized keys:
+
+```bash
+sudo mkdir -p /root/.ssh
+sudo cp /home/ec2-user/.ssh/authorized_keys /root/.ssh/
+sudo chown root:root /root/.ssh/authorized_keys
+sudo chmod 600 /root/.ssh/authorized_keys
+```
+
+* Edit SSH config:
+
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+* Set:
+
+```
+PermitRootLogin prohibit-password
+PubkeyAuthentication yes
+```
+
+* Restart SSH:
+
+```bash
+sudo systemctl restart sshd
+```
+
+---
+
+                                                            ## 6. Enable SSH Password Access (optional)
+
+* Edit `/etc/ssh/sshd_config` and set:
+
+```
+PermitRootLogin yes
+PasswordAuthentication yes
+```
+
+* Restart SSH service:
+
+```bash
+sudo systemctl restart sshd
+```
+
+* Set root password:
+
+```bash
+sudo passwd root
+```
+
+* Ensure security groups restrict SSH access to trusted IPs.
+
+---
+
+                                                                    ## 7. Point Domain to the Server IP
+
+* Log into Internet.bs domain manager
+* Add or edit **A record**:
+
+  * Host: `@`
+  * Points to: Public IP of EC2 (e.g., `157.175.52.229`)
+* Optional: Add **CNAME** for `www` → `saraab.net`
+* Save and wait for DNS propagation
+
+---
+
+                                                                            ## 8. Buy and Setup SSL Certificate (DNS Validation via Internet.bs)
+
+### 8.1 Generate CSR and Private Key on Server
+
+```bash
+sudo openssl req -new -newkey rsa:2048 -nodes -keyout saraab.net.key -out saraab.net.csr
+```
+
+* For **Common Name**, enter wildcard domain `*.saraab.net` if buying wildcard SSL
+
+### 8.2 Submit CSR to Internet.bs & Choose DNS Validation
+
+* Copy contents of `saraab.net.csr` and paste during SSL order
+* Internet.bs provides TXT DNS records for validation
+
+### 8.3 Add DNS TXT Record in Internet.bs DNS Management
+
+* Add TXT record as instructed (e.g., `_acme-challenge.saraab.net` with specific value)
+* Wait for propagation
+
+### 8.4 Complete Validation & Download Certificates
+
+* Internet.bs issues certificate files after successful validation
+* Download your SSL certificate (`certificate.cer`) and CA bundle (`CAChain.crt`)
+
+### 8.5 Install Nginx and Configure SSL
+
+* Install Nginx:
+
+```bash
+sudo dnf install nginx -y
+sudo systemctl enable nginx
+sudo systemctl start nginx
+```
+
+* Upload SSL files to server:
+
+```bash
+sudo mkdir -p /etc/nginx/ssl/saraab.net
+sudo mv certificate.cer CAChain.crt saraab.net.key /etc/nginx/ssl/saraab.net/
+```
+
+* Create Nginx config `/etc/nginx/conf.d/saraab.net.conf`:
+
+```nginx
+server {
+    listen 80;
+    server_name saraab.net *.saraab.net;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name saraab.net *.saraab.net;
+
+    ssl_certificate /etc/nginx/ssl/saraab.net/certificate.cer;
+    ssl_certificate_key /etc/nginx/ssl/saraab.net/saraab.net.key;
+    ssl_trusted_certificate /etc/nginx/ssl/saraab.net/CAChain.crt;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    root /usr/share/nginx/html;
+    index index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+* Test and reload Nginx:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+---
+
+## Additional Tips
+
+* Always restrict SSH access to trusted IPs via Security Groups
+* Backup your keys and certificates securely
+* Monitor logs and keep the server updated
+
+---
