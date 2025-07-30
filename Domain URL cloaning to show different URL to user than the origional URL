@@ -1,0 +1,56 @@
+```markdown
+# CDN Domain Resource Cloning in Nexus
+
+## Objective
+The goal is to load the same resource on both primary and secondary domains.
+
+- Primary domain: [https://crm.finalpay.app/images/passport.jpg](https://crm.finalpay.app/images/passport.jpg)
+- Secondary domain: [https://crm-news.media-content.app/images/passport.jpg](https://crm-news.media-content.app/images/passport.jpg)
+
+## Implementation
+
+### I. CloudFlare Configuration
+
+1. **DNS Configuration**:
+   - Add an A record in DNS with proxy option to the server in `finalpay.app` domain.
+   - Add another A record in DNS with proxy option to the same server in `media-content.app` domain.
+
+2. **Edge Certificates**:
+   - Obtain Edge certificates to encrypt traffic between visitors and Cloudflare.
+
+3. **Transformation and Redirects**:
+   - Configure rules for transformation and redirects in Cloudflare settings to modify HTTP requests and responses.
+
+### II. Server-Side Configuration
+
+1. **Server Access**:
+   - Access the server in AWS and connect via SSH.
+
+2. **Nginx Configuration**:
+   - Nginx configuration files are located at `/etc/nginx`.
+   - Modify the following files:
+     - `/etc/nginx/nginx.conf`
+     - `/etc/nginx/sites-available`
+     - `/etc/nginx/sites-enabled`
+     - `/etc/nginx/ssl`
+
+3. **SSL Configuration**:
+   - Place the correct certificate (`media-content.key` and `media-content.pem`) inside the `/etc/nginx/ssl` folder for communication between CloudFlare domain `media-content.app` and the server.
+
+4. **Site Configuration**:
+   - Create a configuration file `sites-available/crm-news.media-content.app` with similar settings as `crm.nexus`, adjusted for the new domain and content.
+
+5. **Enable Configuration**:
+   - Create a symlink from `sites-available/crm-news.media-content.app` to `sites-enabled/crm-news.media-content.app`.
+
+6. **Configuration Testing**:
+   - Test the Nginx configuration with `sudo nginx -t` to ensure correctness.
+
+7. **Apply Changes**:
+   - If the test is successful, restart Nginx with `sudo service nginx restart`.
+   - Verify the Nginx status with `sudo service nginx status`.
+
+8. **Final Checks**:
+   - Verify that the resources on the desired URLs are loading correctly in the browser.
+
+```
