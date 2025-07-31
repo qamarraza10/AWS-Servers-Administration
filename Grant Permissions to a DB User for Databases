@@ -1,0 +1,251 @@
+# Step-by-Step Guide: Resolving MySQL Permission Issues and Granting Structure Privileges
+
+---
+
+## 1. Identify the Permission Issue
+
+* When running a command like `ALTER TABLE`, you may encounter an error such as:
+
+  ```
+  #1142 - ALTER command denied to user 'username'@'host' for table 'table_name'
+  ```
+
+* This indicates the MySQL user does **not have the required privileges** (e.g., `ALTER`) on the specified database or table.
+
+---
+
+                                                              ## 2. Check Current User Privileges
+
+* Log in to MySQL with the user experiencing the issue and check their privileges:
+
+  ```sql
+  SHOW GRANTS FOR CURRENT_USER();
+  ```
+
+* Or log in as an admin user and check privileges for the target user:
+
+  ```sql
+  SHOW GRANTS FOR 'username'@'host';
+  ```
+
+---
+                                
+                                                            ## 3. Connect to MySQL as a User with Grant Privileges
+
+* You need to connect as a user with permission to grant privileges (often an admin user).
+
+* Example command:
+
+  ```bash
+  mysql -h your-db-endpoint -P 3306 -u admin_username -p
+  ```
+
+* Enter the admin password when prompted.
+
+---
+
+                                                              ## 4. Verify Available Databases and Users (Optional)
+
+* List all databases:
+
+  ```sql
+  SHOW DATABASES;
+  ```
+
+* List all MySQL users:
+
+  ```sql
+  SELECT user, host FROM mysql.user;
+  ```
+
+---
+
+                                                            ## 5. Grant Required Privileges to the User
+
+* To resolve an `ALTER` permission error, grant the necessary structure privileges such as:
+
+  * `CREATE`, `ALTER`, `INDEX`, `DROP`, `CREATE TEMPORARY TABLES`
+  * `SHOW VIEW`, `CREATE ROUTINE`, `ALTER ROUTINE`, `EXECUTE`
+  * `CREATE VIEW`, `EVENT`, `TRIGGER`
+
+* Grant privileges on specific database(s) to the user:
+
+  ```sql
+  GRANT CREATE, ALTER, INDEX, DROP, CREATE TEMPORARY TABLES, SHOW VIEW,
+        CREATE ROUTINE, ALTER ROUTINE, EXECUTE, CREATE VIEW, EVENT, TRIGGER
+  ON database_name.* TO 'username'@'host';
+  ```
+
+* After granting, reload privileges:
+
+  ```sql
+  FLUSH PRIVILEGES;
+  ```
+
+---
+
+                                                          ## 6. Repeat for Other Databases (If Required)
+
+* Run the grant command for each additional database where the user needs these privileges.
+
+---
+
+                                                          ## 7. Verify the New Privileges
+
+* Confirm privileges were granted:
+
+  ```sql
+  SHOW GRANTS FOR 'username'@'host';
+  ```
+
+---
+
+                                                          ## 8. Test the User Privileges
+
+* Log in as the user and attempt the previously failing command (e.g., `ALTER TABLE`).
+
+* Ensure no permission errors occur.
+
+---
+
+## Notes on Security and Safety
+
+* `GRANT` commands **do not modify data or schema** — they only change permissions.
+* Powerful privileges like `ALTER` and `DROP` should only be granted to trusted users.
+* Always maintain backups and document permission changes.
+
+---
+
+# Complete Example Using Your Scenario
+
+---
+
+### Problem:
+
+`fpadmin` user cannot run `ALTER TABLE` on `nexus_kyc_documents` table — permission denied error.
+
+---
+
+### Solution Steps:
+
+#### Step 1: Connect to MySQL as admin user (`feadmin`)
+
+```bash
+mysql -h your-db-endpoint -P 3306 -u feadmin -p
+```
+
+---
+
+#### Step 2: Check current privileges of `fpadmin`
+
+```sql
+SHOW GRANTS FOR 'fpadmin'@'%';
+```
+
+(Currently limited to basic data privileges)
+
+---
+
+#### Step 3: Grant structure privileges on `nexus` database
+
+```sql
+GRANT CREATE, ALTER, INDEX, DROP, CREATE TEMPORARY TABLES, SHOW VIEW,
+      CREATE ROUTINE, ALTER ROUTINE, EXECUTE, CREATE VIEW, EVENT, TRIGGER
+ON nexus.* TO 'fpadmin'@'%';
+FLUSH PRIVILEGES;
+```
+
+---
+
+#### Step 4: Grant same privileges on other required databases:
+
+```sql
+GRANT CREATE, ALTER, INDEX, DROP, CREATE TEMPORARY TABLES, SHOW VIEW,
+      CREATE ROUTINE, ALTER ROUTINE, EXECUTE, CREATE VIEW, EVENT, TRIGGER ON finaltool2.* TO 'fpadmin'@'%';
+GRANT CREATE, ALTER, INDEX, DROP, CREATE TEMPORARY TABLES, SHOW VIEW,
+      CREATE ROUTINE, ALTER ROUTINE, EXECUTE, CREATE VIEW, EVENT, TRIGGER ON betfinal_new_production.* TO 'fpadmin'@'%';
+GRANT CREATE, ALTER, INDEX, DROP, CREATE TEMPORARY TABLES, SHOW VIEW,
+      CREATE ROUTINE, ALTER ROUTINE, EXECUTE, CREATE VIEW, EVENT, TRIGGER ON cosmoswin_production.* TO 'fpadmin'@'%';
+GRANT CREATE, ALTER, INDEX, DROP, CREATE TEMPORARY TABLES, SHOW VIEW,
+      CREATE ROUTINE, ALTER ROUTINE, EXECUTE, CREATE VIEW, EVENT, TRIGGER ON kafka_bf.* TO 'fpadmin'@'%';
+GRANT CREATE, ALTER, INDEX, DROP, CREATE TEMPORARY TABLES, SHOW VIEW,
+      CREATE ROUTINE, ALTER ROUTINE, EXECUTE, CREATE VIEW, EVENT, TRIGGER ON kafka_cw.* TO 'fpadmin'@'%';
+FLUSH PRIVILEGES;
+```
+
+---
+
+#### Step 5: Verify grants for `fpadmin`
+
+```sql
+SHOW GRANTS FOR 'fpadmin'@'%';
+```
+
+---
+
+#### Step 6: Test as `fpadmin`
+
+* Log in as `fpadmin` and run your ALTER commands on tables in the `nexus` or other databases.
+* Confirm the permission errors are resolved.
+
+---
+
+### Final Note:
+
+This process fixed the permission error by explicitly granting the needed structure privileges for `fpadmin` on relevant databases.
+
+---
+
+
+
+We can also connect to the database by: 
+
+Perfect! Your screenshot and explanation show exactly how to use **SSH local port forwarding** (tunneling) to securely connect to phpMyAdmin running on a remote server.
+
+---
+
+### What you have set up:
+
+* **Local port forwarding:**
+  Forward your local machine’s port `8080` to the remote server’s port `8080` (where phpMyAdmin is listening).
+* You connect your browser to `http://localhost:8080/mysql/index.php` — this request is tunneled securely to the remote phpMyAdmin interface.
+
+---
+
+                                                                       ### Summary of the steps: With PhP myAdmin Login on the browser
+
+1. **SSH into your server with port forwarding enabled**
+   Using your SSH client (like PuTTY), configure port forwarding:
+
+   * Local port: `8080`
+   * Remote port: `8080`
+   * This makes `localhost:8080` on your machine act as if it’s the remote server’s port 8080.
+
+2. **Open your browser and go to:**
+
+   ```
+   http://localhost:8080/mysql/index.php
+   ```
+
+   This loads the phpMyAdmin login page running on the remote server.
+
+3. **Login using your MySQL user credentials**
+
+---
+
+### Why do this?
+
+* Your MySQL/phpMyAdmin server might be **not publicly accessible**, or firewall rules restrict direct access.
+* The SSH tunnel securely routes your browser traffic through the SSH connection, providing secure access without exposing ports to the internet.
+
+---
+
+### Additional tips:
+
+* Ensure the SSH session with port forwarding stays open while you use phpMyAdmin.
+* If port `8080` is busy on your machine, you can use a different local port (e.g., 8888) and adjust the browser URL accordingly.
+
+---
+
+If you want, I can guide you on how to set this up from the command line or using different SSH clients!
+
