@@ -1,0 +1,370 @@
+# Full GitHub Actions Auto-Deployment Setup to Debian AWS Server (User: `devluis`)
+
+This document provides a **very detailed step-by-step guide** to set up automatic deployment of your Node.js app from GitHub to a Debian AWS EC2 instance using GitHub Actions.
+
+---
+
+## Overview
+
+- Prepare Debian AWS server with user `devluis`
+- Configure SSH keys for GitHub and GitHub Actions
+- Create and push a sample Node.js app
+- Setup GitHub Actions workflow for automatic deployment
+- Verify app is running and accessible
+
+---
+
+## Step 1: Prepare Your Debian AWS Server
+
+### 1.1 SSH into your server (`3.8.20.66`):
+
+```bash
+ssh admin@3.8.20.66
+````
+
+### 1.2 Update system and install git:
+
+```bash
+sudo apt update && sudo apt upgrade -y
+git --version || sudo apt install git -y
+```
+
+### 1.3 Create user `devluis` for deployment:
+
+```bash
+sudo adduser devluis
+```
+
+### 1.4 Add `devluis` to sudo group (optional):
+
+```bash
+sudo usermod -aG sudo devluis
+```
+
+### 1.5 Setup SSH directory for `devluis` with correct permissions:
+
+```bash
+sudo mkdir -p /home/devluis/.ssh
+sudo chmod 700 /home/devluis/.ssh
+sudo touch /home/devluis/.ssh/authorized_keys
+sudo chmod 600 /home/devluis/.ssh/authorized_keys
+sudo chown -R devluis:devluis /home/devluis/.ssh
+```
+
+### 1.6 Optional: Allow passwordless sudo for `devluis`:
+
+```bash
+echo "devluis ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/devluis
+```
+
+*If you skip this, deployment commands needing sudo will require password input.*
+
+### 1.7 Switch to user `devluis`:
+
+```bash
+sudo su - devluis
+```
+
+### 1.8 Generate SSH key pair for GitHub access (if not already):
+
+```bash
+ssh-keygen -t ed25519 -C "devluis@debian-server"
+```
+
+Press Enter at prompts (no passphrase).
+
+### 1.9 Add the generated public key as a **Deploy Key** in your GitHub repo:
+
+* Go to **GitHub repo** → Settings → Deploy Keys → Add deploy key
+* Title: `debian-server-devluis`
+* Paste the public key (contents of `~/.ssh/id_ed25519.pub`)
+* **Do not** enable write access
+* Save
+
+### 1.10 Clone your repo into `/home/devluis/app`:
+
+```bash
+git clone git@github.com:qamarraza10/Debian_Auto_Deploy_Testing.git ~/app
+```
+
+### 1.11 Test pulling repo changes:
+
+```bash
+cd ~/app
+git pull origin main
+```
+
+### 1.12 Install Node.js, npm, and pm2 on your server
+
+Choose one:
+
+#### Option 1: Node.js 18 (LTS)
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install curl -y
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install nodejs -y
+node -v
+npm -v
+sudo npm install -g pm2
+```
+
+#### Option 2: Node.js 20+ (Newer LTS)
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install curl -y
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install nodejs -y
+node -v
+npm -v
+sudo npm install -g pm2
+```
+
+---
+
+## Step 2: Prepare Your Local Windows Laptop
+
+### 2.1 Create sample Node.js app locally
+
+Create folder `Debian_Auto_Deploy_Testing`.
+
+Create `app.js`:
+
+```js
+const http = require('http');
+const port = 3000;
+
+const requestHandler = (request, response) => {
+  response.end('Hello from Debian auto-deploy app!');
+};
+
+const server = http.createServer(requestHandler);
+
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+```
+
+Create `package.json`:
+
+```json
+{
+  "name": "debian-auto-deploy-app",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {}
+}
+```
+
+### 2.2 Push app to GitHub repo
+
+You can push using either:
+
+* **Git Bash:**
+
+```bash
+cd path/to/Debian_Auto_Deploy_Testing
+git init
+git remote add origin git@github.com:qamarraza10/Debian_Auto_Deploy_Testing.git
+git add .
+git commit -m "Initial commit: sample node.js app"
+git push -u origin main
+```
+
+* **GitHub Desktop:**
+
+  1. Open GitHub Desktop.
+  2. Add local folder as repo.
+  3. Commit files and push to `main`.
+
+### 2.3 On server, pull latest changes:
+
+```bash
+cd ~/app
+git pull origin main
+```
+
+---
+
+## Step 3: Setup GitHub Actions for Auto Deployment
+
+### 3.1 Generate SSH key pair for GitHub Actions (locally)
+
+Run:
+
+```bash
+ssh-keygen -t ed25519 -C "github-actions-to-server" -f github_actions_deploy_key
+```
+
+Press Enter for no passphrase.
+
+---
+
+### 3.2 Add public key to server’s `devluis` authorized\_keys
+
+1. Copy contents of `github_actions_deploy_key.pub`.
+
+2. SSH into server as `devluis`:
+
+```bash
+nano ~/.ssh/authorized_keys
+```
+
+3. Paste the public key, save and exit.
+
+4. Set permissions:
+
+```bash
+chmod 600 ~/.ssh/authorized_keys
+```
+
+---
+
+### 3.3 Add private key to GitHub Secrets
+
+* Navigate to your GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+* Name: `DEVLUIS_AUTO_DEPLOY_KEY`
+* Paste the contents of `github_actions_deploy_key` (private key)
+* Save
+
+---
+
+### 3.4 Create GitHub Actions workflow file
+
+Create `.github/workflows/deploy.yml` with:
+
+```yaml
+name: Deploy to Debian Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup SSH agent and add key
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.DEVLUIS_AUTO_DEPLOY_KEY }}
+
+      - name: Deploy to server via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no devluis@3.8.20.66 "
+            cd ~/app &&
+            git pull origin main &&
+            npm install &&
+            pm2 restart app || pm2 start app.js --name app
+          "
+```
+
+---
+
+### 3.5 Commit and push workflow file
+
+* Git Bash:
+
+```bash
+git add .github/workflows/deploy.yml
+git commit -m "Add GitHub Actions deployment workflow"
+git push origin main
+```
+
+* Or GitHub Desktop: commit and push the workflow file.
+
+---
+
+## Step 4: Test Your Deployment Pipeline
+
+1. Modify `app.js` locally (e.g., change greeting message).
+2. Commit and push to GitHub:
+
+```bash
+git add app.js
+git commit -m "Update greeting message"
+git push origin main
+```
+
+3. Monitor the **Actions** tab in your GitHub repo to see the deployment run.
+4. Upon success, your server pulls code, installs dependencies, and restarts the app.
+
+---
+
+## Step 5: Verify Your App is Running on the Server
+
+SSH to your server as `devluis` and run:
+
+```bash
+pm2 status              # Check if app is running and online
+sudo ss -tulwn | grep 3000  # Confirm port 3000 is listening
+curl http://localhost:3000   # Test local app response
+```
+
+---
+
+### Optional: Access Your App via Browser
+
+1. Edit your EC2 Security Group:
+
+* Add inbound rule to allow TCP port `3000` from your IP or anywhere (0.0.0.0/0).
+
+2. Visit in browser:
+
+```
+http://3.8.20.66:3000
+```
+
+You should see your app’s greeting message.
+
+---
+
+# Summary Table
+
+| Step                  | Description/Command                                          |
+| --------------------- | ------------------------------------------------------------ |
+| Server: create user   | `sudo adduser devluis`                                       |
+| Server: setup SSH     | Configure `.ssh/authorized_keys` and permissions             |
+| Server: install tools | Install git, Node.js, npm, pm2                               |
+| Server: clone repo    | `git clone git@github.com:... ~/app`                         |
+| Local: prepare app    | Create `app.js` & `package.json`, push to GitHub             |
+| Local: generate keys  | `ssh-keygen -t ed25519 -f github_actions_deploy_key`         |
+| Server: add pub key   | Append GitHub Actions public key to `~/.ssh/authorized_keys` |
+| GitHub: add secret    | Add private key as secret `DEVLUIS_AUTO_DEPLOY_KEY`          |
+| GitHub: workflow file | `.github/workflows/deploy.yml` with deployment commands      |
+| Test & verify         | Push code, check Actions, pm2 status, test app URL           |
+
+---
+
+## Notes
+
+* You can use either Git Bash or GitHub Desktop for git operations.
+* Passwordless sudo for `devluis` is optional but recommended for smooth deployment.
+* SSH keys for GitHub repo access and for GitHub Actions deployment are separate.
+* Keep private keys secure; never commit them to your repo.
+
+---
+
+## Congrats!
+
+You now have a **complete automated deployment pipeline** from your local Windows laptop through GitHub to your Debian AWS server!
+
+---
+
+If you want to extend this setup (e.g., with Apache, HAProxy, SSL), or need further help, feel free to ask!
+
+---
+
+*End of document*
+
+```
