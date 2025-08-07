@@ -1,0 +1,345 @@
+## Prerequisites
+
+- Debian AWS EC2 instance running (e.g., `3.8.20.66`)
+- User `devluis` with sudo privileges
+- Node.js app running on port 3000 (managed by pm2)
+- Apache installed or will be installed
+- HAProxy installed or will be installed
+- SSH access to your server as `devluis`
+- Domain name pointing to your server’s public IP (required for HTTPS setup)
+
+---
+
+## Step 1: Install and Configure Apache Web Server
+
+### 1.1 SSH into your Debian server
+
+```bash
+ssh devluis@3.8.20.66
+````
+
+### 1.2 Update package lists
+
+```bash
+sudo apt update
+```
+
+### 1.3 Install Apache2
+
+```bash
+sudo apt install apache2 -y
+```
+
+### 1.4 Start and enable Apache to run at boot
+
+```bash
+sudo systemctl start apache2
+sudo systemctl enable apache2
+```
+
+### 1.5 Verify Apache service status
+
+```bash
+sudo systemctl status apache2
+```
+
+You should see `active (running)` status.
+
+### 1.6 Check Apache default page
+
+Open your browser and navigate to:
+
+```
+http://3.8.20.66
+```
+
+You should see the default Apache2 Debian welcome page.
+
+### 1.7 (Optional) Configure firewall if using `ufw`
+
+Check status:
+
+```bash
+sudo ufw status
+```
+
+Allow Apache traffic:
+
+```bash
+sudo ufw allow 'Apache'
+sudo ufw reload
+```
+
+---
+
+## Step 2: Install and Configure HAProxy
+
+### 2.1 Install HAProxy
+
+```bash
+sudo apt install haproxy -y
+```
+
+### 2.2 Enable and start HAProxy service
+
+```bash
+sudo systemctl enable haproxy
+sudo systemctl start haproxy
+```
+
+### 2.3 Change Apache port to 8080
+
+Since HAProxy will listen on port 80, change Apache to port 8080.
+
+* Edit ports config:
+
+```bash
+sudo nano /etc/apache2/ports.conf
+```
+
+* Change
+
+```
+Listen 80
+```
+
+to
+
+```
+Listen 8080
+```
+
+* Edit default site config:
+
+```bash
+sudo nano /etc/apache2/sites-enabled/000-default.conf
+```
+
+* Change
+
+```
+<VirtualHost *:80>
+```
+
+to
+
+```
+<VirtualHost *:8080>
+```
+
+* Save and exit.
+
+* Restart Apache:
+
+```bash
+sudo systemctl restart apache2
+```
+
+### 2.4 Configure HAProxy as reverse proxy and load balancer
+
+Backup original config:
+
+```bash
+sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.bak
+```
+
+Edit HAProxy config:
+
+```bash
+sudo nano /etc/haproxy/haproxy.cfg
+```
+
+Replace with:
+
+```cfg
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    daemon
+    maxconn 256
+
+defaults
+    log global
+    mode http
+    option httplog
+    option dontlognull
+    retries 3
+    timeout connect 5000ms
+    timeout client 50000ms
+    timeout server 50000ms
+
+frontend http_front
+    bind *:80
+    default_backend web_servers
+
+backend web_servers
+    balance roundrobin
+    server apache1 127.0.0.1:8080 check
+    server nodejs1 127.0.0.1:3000 check
+```
+
+Save and exit.
+
+### 2.5 Restart HAProxy to apply changes
+
+```bash
+sudo systemctl restart haproxy
+```
+
+### 2.6 Test load balancing
+
+Open browser to:
+
+```
+http://3.8.20.66
+```
+
+Refresh multiple times to see HAProxy alternate serving Apache’s page and Node.js app response.
+
+---
+
+## Step 3: Enable HTTPS with Let’s Encrypt on HAProxy
+
+### 3.1 Install Certbot
+
+```bash
+sudo apt update
+sudo apt install certbot -y
+```
+
+### 3.2 Stop HAProxy temporarily to free port 80
+
+```bash
+sudo systemctl stop haproxy
+```
+
+### 3.3 Obtain SSL certificates for your domain
+
+Replace `your.domain.com` with your actual domain:
+
+```bash
+sudo certbot certonly --standalone -d your.domain.com
+```
+
+Follow prompts to complete domain validation.
+
+### 3.4 Configure HAProxy for SSL termination
+
+Edit HAProxy config:
+
+```bash
+sudo nano /etc/haproxy/haproxy.cfg
+```
+
+Add/modify frontend sections:
+
+```cfg
+frontend https_front
+    bind *:443 ssl crt /etc/letsencrypt/live/your.domain.com/fullchain.pem \
+                    crt /etc/letsencrypt/live/your.domain.com/privkey.pem
+    default_backend web_servers
+
+frontend http_front
+    bind *:80
+    redirect scheme https code 301 if !{ ssl_fc }
+
+backend web_servers
+    balance roundrobin
+    server apache1 127.0.0.1:8080 check
+    server nodejs1 127.0.0.1:3000 check
+```
+
+Save and exit.
+
+### 3.5 Start HAProxy service
+
+```bash
+sudo systemctl start haproxy
+```
+
+### 3.6 Update AWS security group to allow port 443 (HTTPS)
+
+* Go to EC2 Console → Security Groups → Select your group
+* Add inbound rule:
+
+  * Type: HTTPS
+  * Port: 443
+  * Source: Your IP or 0.0.0.0/0 (public access)
+
+### 3.7 Test HTTPS access
+
+Open browser and visit:
+
+```
+https://your.domain.com
+```
+
+You should see your site load securely with a valid SSL certificate.
+
+---
+
+## Step 4: Setup Auto Renewal of Certificates
+
+Edit crontab for root:
+
+```bash
+sudo crontab -e
+```
+
+Add line:
+
+```cron
+0 3 * * * certbot renew --post-hook "systemctl restart haproxy"
+```
+
+This runs daily renewal check at 3 AM and restarts HAProxy if renewed.
+
+---
+
+## Verification Commands Summary
+
+* Check Apache status:
+
+```bash
+sudo systemctl status apache2
+```
+
+* Check HAProxy status:
+
+```bash
+sudo systemctl status haproxy
+```
+
+* Check Node.js app running under pm2:
+
+```bash
+pm2 status
+```
+
+* Verify ports listening:
+
+```bash
+sudo ss -tulwn | grep -E "80|443|3000|8080"
+```
+
+---
+
+## Notes
+
+* Ensure your Node.js app is running on port 3000 (managed by pm2).
+* Apache listens on port 8080 after config change.
+* HAProxy listens on ports 80 (HTTP) and 443 (HTTPS) and load balances requests.
+* HTTPS requires a valid domain pointed to your server’s IP.
+* Use firewall or AWS security group rules to open necessary ports.
+
+---
+
+# Congratulations!
+
+You have successfully set up:
+
+* Apache web server
+* HAProxy as a load balancer for Apache and Node.js
+* SSL/TLS secured HTTPS traffic using Let’s Encrypt certificates
+* Automated SSL renewal with cron
+
